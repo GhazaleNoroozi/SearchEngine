@@ -12,9 +12,15 @@ def main():
 
     iim = IIM(texts)
 
-    # query = '^^'
-    # while query != '':
-    #     query = input()
+    query = '^_^'
+    while query != '':
+        query = input()
+        docs = iim.answer(query)
+        for i in range(0, len(docs)):
+            category = docs[len(docs) - i - 1]
+            for j in range(0, len(category)):
+                doc = category[len(category) - j - 1]
+                print(doc)
 
 
 if __name__ == "__main__":

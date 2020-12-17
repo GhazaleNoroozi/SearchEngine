@@ -16,40 +16,105 @@ REPLACE_MAP = {'[\u200c:;?!,؟،.؛\'"\[\](){}<>«»/\\-&$@#*\n]': ' ',
 STOP_INDEX = 10
 
 
+def merge(doc_lists):
+    print(doc_lists)
+    count = len(doc_lists)
+    # index_docs = []
+    # for i in range(0, count):
+    #     index_docs.append((0, doc_lists[i]))
+
+    related_docs_lists = [[] for i in range(0, count)]
+    indexes = [0 for i in range(0, count)]
+
+    while True:
+
+        # find the doc list with min doc_id and increment it's index
+        min_index = 0
+        minimum = 99999999
+        for i in range(0, count):
+            # print(f'in doclist index is: {indexes[i]}')
+            current_doc = doc_lists[i][indexes[i]]
+            if indexes[i] != -1 and current_doc < minimum:
+                minimum = current_doc
+                min_index = i
+
+        # print(f'min_index:{min_index}')
+
+        # add this doc_id at the min index in the aggregate somewhere
+        current_doc = doc_lists[min_index][indexes[min_index]]
+        similarity_count = 0
+        for i in range(0, count):
+            if i != min_index and doc_lists[i][indexes[i]] == doc_lists[min_index][indexes[min_index]]:
+                similarity_count += 1
+        # print(similarity_count, ' ', current_doc)
+        related_docs_lists[similarity_count].append(current_doc)
+
+        # move forward one index for the min doc_id
+        for i in range(0, count):
+            if i != min_index and doc_lists[i][indexes[i]] == doc_lists[min_index][indexes[min_index]]:
+                if indexes[i] >= len(doc_lists[i]) - 1:
+                    indexes[i] = -1
+                else:
+                    indexes[i] += 1
+
+        if indexes[min_index] >= len(doc_lists[min_index]) - 1:
+            indexes[min_index] = -1
+        else:
+            indexes[min_index] += 1
+
+        # check if all reached the end
+        should_continue = False
+        for index in indexes:
+            if index != -1:
+                should_continue = True
+
+        if not should_continue:
+            break
+
+    return related_docs_lists
+
+
 class IIM:
     def __init__(self, texts):
-        self.texts = texts
-        self.t_texts = []
-        self.dict = {}
-        self.preprocess()
-        self.tokenize()
-        self.stop_words()
+        texts = self.preprocess(texts)
+        t_texts, vocab = self.tokenize(texts)
+        self.dict = self.make_dict(t_texts, vocab)
+        self.s_words = self.remove_stop_words()
 
-    def preprocess(self):
-        for i in range(0, len(self.texts)):
+    def preprocess(self, texts):
+        for i in range(0, len(texts)):
             for replacement in REPLACE_MAP:
-                self.texts[i] = re.sub(replacement, REPLACE_MAP[replacement], self.texts[i])
+                texts[i] = re.sub(replacement, REPLACE_MAP[replacement], texts[i])
         self.normalize()
 
-    def tokenize(self):
+        return texts
+
+    def tokenize(self, texts):
         vocab = []
-        for text in self.texts:
+        t_texts = []
+        for text in texts:
             t = text.split()
-            self.t_texts.append(t)
+            t_texts.append(t)
             vocab.extend(t)
 
         vocab = sorted(set(vocab))
 
-        for word in vocab:
-            self.dict[word] = []
+        return t_texts, vocab
 
-        for i in range(0, len(self.t_texts)):
-            t_text = self.t_texts[i]
+    def make_dict(self, t_texts, vocab):
+        dictionary = {}
+        for word in vocab:
+            dictionary[word] = []
+
+        for i in range(0, len(t_texts)):
+            t_text = t_texts[i]
             for j in range(0, len(t_text)):
                 word = t_text[j]
-                self.dict[word].append((i, j))
+                dictionary[word].append((i, j))
 
-    def stop_words(self):
+        return dictionary
+
+    def remove_stop_words(self):
         frequencies = []
         for word in self.dict:
             count = len(self.dict[word])
@@ -63,6 +128,8 @@ class IIM:
         for stop_word in stop_words:
             del self.dict[stop_word[0]]
         # print(self.dict)
+
+        return stop_words
 
     def stemming(self):
         #TODO
@@ -82,3 +149,27 @@ class IIM:
         self.remove_plural_signs()
         self.remove_suffixes()
         pass
+
+    def answer(self, query):
+        t_queries, vocab = self.tokenize(self.preprocess([query]))
+        t_query = t_queries[0]
+        # print(t_query)
+
+        if len(t_query) == 1:
+            if t_query[0] in self.dict:
+                indexes = self.dict[t_query[0]]
+                return set([index[0] for index in indexes])
+            else:
+                return []
+
+        count = 0
+        if len(t_query) > 1:
+            index_list = []
+            for q_word in t_query:
+                if q_word in self.dict:
+                    index_list.append(sorted(list(set([pos_doc[0] for pos_doc in self.dict[q_word]]))))
+                    count += 1
+
+            res = merge(index_list)
+            print(res)
+            return res
