@@ -4,15 +4,13 @@ from IIM import IIM
 
 def main():
     file_names = os.listdir('Documents')
-    files = []
+    texts = []
     for file_name in file_names:
         file = open('Documents' + '/' + file_name, 'rt',  encoding="utf8")
-        files.append(file)
-
-    iim = IIM(files)
-
-    for file in files:
+        texts.append(file.read())
         file.close()
+
+    iim = IIM(texts)
 
     # query = '^^'
     # while query != '':
